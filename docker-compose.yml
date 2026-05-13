@@ -1,0 +1,74 @@
+---
+# docker-name-server-auth — NSD authoritative DNS + nsd-manager
+#
+# Both services built locally from Alpine. Single ALPINE_TAG pin in .env.
+# network_mode: host — DNS (udp/53, tcp/53) requires host networking.
+# nsd-manager reaches nsd-control at 127.0.0.1:8952 via host network stack.
+#
+# TLS keys for nsd-control are generated at runtime by the nsd container
+# into the shared nsd-keys volume. nsd-manager mounts the same volume to
+# authenticate nsd-control commands with matching credentials.
+#
+# Startup order:
+#   1. nsd-manager starts, clones knet-zones, generates 20-zones.conf
+#   2. nsd-manager health check passes once 20-zones.conf is non-empty
+#   3. nsd starts — generates TLS keys, loads zones
+
+services:
+
+  nsd-manager:
+    build:
+      context: ./build/manager
+      args:
+        ALPINE_TAG: ${ALPINE_TAG}
+    image: dns-nsd-manager:${ALPINE_TAG}
+    container_name: nsd-manager
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      ZONES_REPO: ${ZONES_REPO}
+      ZONES_BRANCH: ${ZONES_BRANCH:-main}
+      ZONES_CRON: ${ZONES_CRON:-*/5 * * * *}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./manager/ssh:/root/.ssh:ro
+      - zones:/etc/nsd/zones
+      - ./nsd/nsd.conf.d:/etc/nsd/nsd.conf.d
+      - zones-git:/var/lib/nsd-manager/zones
+      - nsd-keys:/etc/nsd/keys:ro
+    healthcheck:
+      test: ["CMD", "test", "-s", "/etc/nsd/nsd.conf.d/20-zones.conf"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  nsd:
+    build:
+      context: ./build/nsd
+      args:
+        ALPINE_TAG: ${ALPINE_TAG}
+    image: dns-nsd:${ALPINE_TAG}
+    container_name: nsd
+    restart: unless-stopped
+    depends_on:
+      nsd-manager:
+        condition: service_healthy
+    network_mode: host
+    volumes:
+      - ./nsd/nsd.conf:/etc/nsd/nsd.conf:ro
+      - ./nsd/nsd.conf.d:/etc/nsd/nsd.conf.d:ro
+      - ./nsd/custom.conf.d:/etc/nsd/custom.conf.d:ro
+      - zones:/etc/nsd/zones
+      - nsd-keys:/etc/nsd/keys
+    healthcheck:
+      test: ["CMD", "drill", "@127.0.0.1", "health.check.nsd", "A"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  zones:
+  zones-git:
+  nsd-keys:

@@ -1,0 +1,12 @@
+$TTL 3600
+; health.check.nsd. — static zone for Docker healthcheck
+; Baked into the NSD image. Not a real zone — do not delegate.
+$ORIGIN health.check.nsd.
+@   IN SOA  localhost. root.localhost. (
+            1       ; serial
+            3600    ; refresh (1 hour)
+            900     ; retry (15 minutes)
+            604800  ; expire (7 days)
+            3600)   ; minimum (1 hour)
+@   IN NS   localhost.
+@   IN A    127.0.0.1
