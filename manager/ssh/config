@@ -1,4 +1,4 @@
-Host *
+Host github.com
     IdentityFile /root/.ssh/id_ed25519
     UserKnownHostsFile /root/.ssh/known_hosts
     StrictHostKeyChecking yes
