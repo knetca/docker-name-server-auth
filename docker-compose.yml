@@ -5,8 +5,39 @@
 # network_mode: host — DNS (udp/53, tcp/53) requires host networking.
 # nsd-manager reaches nsd-control at 127.0.0.1:8952 via host network stack.
 # nsd-control is no-TLS, loopback only — acceptable on a dedicated host.
+#
+# Startup order:
+#   1. nsd-manager starts, clones knet-zones, generates 20-zones.conf
+#   2. nsd-manager health check passes once 20-zones.conf is non-empty
+#   3. nsd starts — zones already present on first boot
 
 services:
+
+  nsd-manager:
+    build:
+      context: ./build/manager
+      args:
+        ALPINE_TAG: ${ALPINE_TAG}
+    image: dns-nsd-manager:${ALPINE_TAG}
+    container_name: nsd-manager
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      ZONES_REPO: ${ZONES_REPO}
+      ZONES_BRANCH: ${ZONES_BRANCH:-main}
+      ZONES_CRON: ${ZONES_CRON:-*/5 * * * *}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./manager/ssh:/root/.ssh:ro
+      - zones:/etc/nsd/zones
+      - ./nsd/nsd.conf.d:/etc/nsd/nsd.conf.d
+      - zones-git:/var/lib/nsd-manager/zones
+    healthcheck:
+      test: ["CMD", "test", "-s", "/etc/nsd/nsd.conf.d/20-zones.conf"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
 
   nsd:
     build:
@@ -16,6 +47,9 @@ services:
     image: dns-nsd:${ALPINE_TAG}
     container_name: nsd
     restart: unless-stopped
+    depends_on:
+      nsd-manager:
+        condition: service_healthy
     network_mode: host
     volumes:
       - ./nsd/nsd.conf:/etc/nsd/nsd.conf:ro
@@ -28,29 +62,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-
-  nsd-manager:
-    build:
-      context: ./build/manager
-      args:
-        ALPINE_TAG: ${ALPINE_TAG}
-    image: dns-nsd-manager:${ALPINE_TAG}
-    container_name: nsd-manager
-    restart: unless-stopped
-    depends_on:
-      nsd:
-        condition: service_healthy
-    network_mode: host
-    environment:
-      ZONES_REPO: ${ZONES_REPO}
-      ZONES_BRANCH: ${ZONES_BRANCH:-main}
-      ZONES_CRON: ${ZONES_CRON:-*/5 * * * *}
-      TZ: ${TZ:-UTC}
-    volumes:
-      - ./manager/ssh:/root/.ssh:ro
-      - zones:/etc/nsd/zones
-      - ./nsd/nsd.conf.d:/etc/nsd/nsd.conf.d
-      - zones-git:/var/lib/nsd-manager/zones
 
 volumes:
   zones:
