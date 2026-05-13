@@ -1,0 +1,12 @@
+# Environment
+.env
+*.local
+
+# SSH deploy key — generated per host, never committed
+manager/ssh/*
+!manager/ssh/SETUP.md
+!manager/ssh/config
+
+# NSD host-specific overrides
+nsd/custom.conf.d/*
+!nsd/custom.conf.d/README.md
