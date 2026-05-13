@@ -4,12 +4,15 @@
 # Both services built locally from Alpine. Single ALPINE_TAG pin in .env.
 # network_mode: host — DNS (udp/53, tcp/53) requires host networking.
 # nsd-manager reaches nsd-control at 127.0.0.1:8952 via host network stack.
-# nsd-control is no-TLS, loopback only — acceptable on a dedicated host.
+#
+# TLS keys for nsd-control are generated at runtime by the nsd container
+# into the shared nsd-keys volume. nsd-manager mounts the same volume to
+# authenticate nsd-control commands with matching credentials.
 #
 # Startup order:
 #   1. nsd-manager starts, clones knet-zones, generates 20-zones.conf
 #   2. nsd-manager health check passes once 20-zones.conf is non-empty
-#   3. nsd starts — zones already present on first boot
+#   3. nsd starts — generates TLS keys, loads zones
 
 services:
 
@@ -32,6 +35,7 @@ services:
       - zones:/etc/nsd/zones
       - ./nsd/nsd.conf.d:/etc/nsd/nsd.conf.d
       - zones-git:/var/lib/nsd-manager/zones
+      - nsd-keys:/etc/nsd/keys:ro
     healthcheck:
       test: ["CMD", "test", "-s", "/etc/nsd/nsd.conf.d/20-zones.conf"]
       interval: 10s
@@ -56,6 +60,7 @@ services:
       - ./nsd/nsd.conf.d:/etc/nsd/nsd.conf.d:ro
       - ./nsd/custom.conf.d:/etc/nsd/custom.conf.d:ro
       - zones:/etc/nsd/zones
+      - nsd-keys:/etc/nsd/keys
     healthcheck:
       test: ["CMD", "drill", "@127.0.0.1", "health.check.nsd", "A"]
       interval: 30s
@@ -66,3 +71,4 @@ services:
 volumes:
   zones:
   zones-git:
+  nsd-keys:

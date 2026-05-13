@@ -3,7 +3,9 @@
 # Handles:
 #   - Polling the knet-zones git repo and reloading NSD on change
 #
-# Calls nsd-control directly (host networking, loopback, no TLS).
+# nsd-control TLS keys are generated at runtime by the nsd container
+# into the shared nsd-keys volume. nsd-manager reads keys from the
+# same volume to authenticate nsd-control commands.
 
 ARG ALPINE_TAG=3.20
 FROM alpine:${ALPINE_TAG}
@@ -11,6 +13,7 @@ FROM alpine:${ALPINE_TAG}
 RUN apk add --no-cache \
     git \
     nsd \
+    openssl \
     dcron \
     openssh-client \
     tzdata

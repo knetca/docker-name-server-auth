@@ -17,6 +17,7 @@ ZONES_BRANCH="${ZONES_BRANCH:-main}"
 WORK_DIR="/var/lib/nsd-manager/zones"
 ZONE_DEST="/etc/nsd/zones"
 ZONES_CONF="/etc/nsd/nsd.conf.d/20-zones.conf"
+KEYDIR="/etc/nsd/keys"
 
 log() { echo "$(date -Iseconds) [deploy-zones] $*"; }
 
@@ -99,16 +100,24 @@ done
 mv "${ZONES_CONF_TMP}" "${ZONES_CONF}"
 log "Generated ${ZONES_CONF}"
 
-# --- Validate ---
-if ! nsd-checkconf /etc/nsd/nsd.conf >/dev/null 2>&1; then
-    log "ERROR: nsd-checkconf failed — not reloading"
-    exit 1
-fi
-
 # --- Reconfig and reload ---
-if nsd-control -s 127.0.0.1@8952 status >/dev/null 2>&1; then
-    nsd-control -s 127.0.0.1@8952 reconfig
-    nsd-control -s 127.0.0.1@8952 reload
+# Write minimal nsd-control config pointing at shared TLS keys.
+# Keys are generated at runtime by the nsd container into the nsd-keys volume.
+NSD_CONTROL_CONF="/tmp/nsd-control.conf"
+cat > "${NSD_CONTROL_CONF}" <<CONF
+remote-control:
+    control-enable: yes
+    control-interface: 127.0.0.1
+    control-port: 8952
+    server-key-file: "${KEYDIR}/nsd_server.key"
+    server-cert-file: "${KEYDIR}/nsd_server.pem"
+    control-key-file: "${KEYDIR}/nsd_control.key"
+    control-cert-file: "${KEYDIR}/nsd_control.pem"
+CONF
+
+if nsd-control -c "${NSD_CONTROL_CONF}" -s 127.0.0.1@8952 status >/dev/null 2>&1; then
+    nsd-control -c "${NSD_CONTROL_CONF}" -s 127.0.0.1@8952 reconfig
+    nsd-control -c "${NSD_CONTROL_CONF}" -s 127.0.0.1@8952 reload
     log "NSD reconfig and reload complete"
 else
     log "ERROR: nsd-control not reachable at 127.0.0.1:8952"
