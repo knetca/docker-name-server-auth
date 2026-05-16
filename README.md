@@ -75,7 +75,7 @@ $EDITOR .env
 # Follow manager/ssh/SETUP.md
 
 # 4. Set correct permissions on deploy key
-chmod 600 manager/ssh/id_ed25519
+chmod 600 manager/ssh/id_rsa
 
 # 5. Build all images
 docker compose build
