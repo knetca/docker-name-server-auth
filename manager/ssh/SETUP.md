@@ -1,26 +1,26 @@
 # SSH Deploy Key Setup
 
 Run once on each nameserver host. The key is read-only on the knet-zones repo.
-`id_ed25519` is gitignored — never committed.
+`id_rsa` is gitignored — never committed.
 `known_hosts` is safe to commit on a private branch.
 
 ## 1. Generate the deploy key
 
 ```bash
 ssh-keygen -t ed25519 -C "nsd-manager@$(hostname)" \
-    -f manager/ssh/id_ed25519 -N ""
+    -f manager/ssh/id_rsa -N ""
 ```
 
 This creates:
-- `manager/ssh/id_ed25519` — private key (gitignored, bind-mounted into container)
-- `manager/ssh/id_ed25519.pub` — public key (add to GitHub)
+- `manager/ssh/id_rsa` — private key (gitignored, bind-mounted into container)
+- `manager/ssh/id_rsa.pub` — public key (add to GitHub)
 
 ## 2. Add to GitHub as a deploy key
 
 GitHub → knet-zones repo → Settings → Deploy keys → Add deploy key
 
 - Title: `nsd-manager-<hostname>` (e.g. `nsd-manager-ns1.knet.ca`)
-- Key: paste contents of `manager/ssh/id_ed25519.pub`
+- Key: paste contents of `manager/ssh/id_rsa.pub`
 - Allow write access: **NO**
 
 ## 3. Capture GitHub host key
@@ -50,5 +50,5 @@ Expected: repository clones successfully, `SSH key works` printed.
 The entrypoint enforces 0600 on the key at startup.
 
 ```bash
-chmod 600 manager/ssh/id_ed25519
+chmod 600 manager/ssh/id_rsa
 ```
