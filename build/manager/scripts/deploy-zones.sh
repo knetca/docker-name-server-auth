@@ -16,7 +16,7 @@ ZONES_REPO="${ZONES_REPO:?}"
 ZONES_BRANCH="${ZONES_BRANCH:-main}"
 WORK_DIR="/var/lib/nsd-manager/zones"
 ZONE_DEST="/etc/nsd/zones"
-ZONES_CONF="/etc/nsd/nsd.conf.d/20-zones.conf"
+ZONES_CONF="/etc/nsd/nsd-runtime/20-zones.conf"
 KEYDIR="/etc/nsd/keys"
 
 log() { echo "$(date -Iseconds) [deploy-zones] $*"; }
