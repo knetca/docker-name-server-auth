@@ -1,8 +1,9 @@
 # nsd — authoritative DNS server
-# Plain Alpine + nsd package. Config is bind-mounted from the repo at runtime.
+# Tracked config (nsd.conf, 10-server.conf) is bind-mounted from the repo.
+# Runtime-generated config (20-zones.conf) lives in the nsd-runtime named
+# volume shared with nsd-manager. TLS keys live in the nsd-keys named volume.
 # Health check zone is baked in — decoupled from any real served zone.
-# TLS keys for nsd-control are generated at runtime into a shared volume
-# so nsd-manager can reach nsd-control with matching credentials.
+# docker compose down -v produces fully clean runtime state.
 # Runs as root — consistent with the rest of the stack.
 
 ARG ALPINE_TAG=3.20
